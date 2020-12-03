@@ -3,8 +3,10 @@ from typing import Union, Tuple
 
 from jwcrypto import jwk, jwe
 
+from ._helper import extract_cek
 
-def encrypt_jwe(pub_key: str, payload: Union[str, bytes, dict]) -> str:
+
+def encrypt_jwe(pub_key: str, payload: Union[str, bytes, dict]) -> Tuple[str, jwk.JWK]:
     """Encrypt JWE token.
 
     **JWE format**:
@@ -17,7 +19,7 @@ def encrypt_jwe(pub_key: str, payload: Union[str, bytes, dict]) -> str:
 
     :param pub_key: Peer's public key.  # FIXME: follows JWK format currently.
     :param payload: Payload to be sent
-    :return str: serialized JWE token
+    :return Tuple[str, jwcrypto.jwk.JWK]: serialized JWE token, CEK  # TODO: CEK type could be changed.
     """
     peer_pub_key = jwk.JWK.from_json(pub_key)
     protected_header = {
@@ -34,15 +36,17 @@ def encrypt_jwe(pub_key: str, payload: Union[str, bytes, dict]) -> str:
         recipient=peer_pub_key,
         protected=protected_header
     )
-    return jwe_obj.serialize(compact=True)
+    cek = extract_cek(jwe_obj)
+
+    return jwe_obj.serialize(compact=True), cek
 
 
-def decrypt_jwe(token: str, pri_key: str) -> Tuple[dict, bytes]:
+def decrypt_jwe(token: str, pri_key: str) -> Tuple[dict, bytes, jwk.JWK]:
     """Decrypt given JWE token.
 
     :param token: JWE Token to be decrypted  # FIXME: follows JWK format currently.
     :param pri_key: Matched private key to be used in JWE creation.
-    :return Tuple[dict, bytes]: JOSE Header, Payload
+    :return Tuple[dict, bytes, jwcrypto.jwk.JWK]: JOSE Header, Payload  # TODO: CEK type could be changed.
 
     :raises:
         InvalidJWEData: if failed in token decryption, normally in case of wrong private key supplied.
@@ -52,5 +56,52 @@ def decrypt_jwe(token: str, pri_key: str) -> Tuple[dict, bytes]:
     jwe_obj.deserialize(
         token,
         key=pri_key
+    )
+    cek = extract_cek(jwe_obj)
+
+    return jwe_obj.jose_header, jwe_obj.payload, cek
+
+
+def encrypt_jwe_with_cek(cek, payload: Union[str, bytes, dict]) -> str:
+    """Encrypt JWE token with given key.
+
+    If you successfully exchanged CEK by using encrypt_jwe / decrypt_jwe,
+    then no longer need to generate CEK and its KEK.
+
+    :param cek: Content Encryption Key extracted from JWE token enc/dec process.
+    :param payload: Content to be encrypted by CEK.
+    :return: JWE token
+    """
+    protected_header = {
+        "alg": "dir",
+        "enc": "A128GCM",
+        "typ": "JWE",
+    }
+
+    if isinstance(payload, dict):
+        payload = json.dumps(payload)
+
+    jwe_obj = jwe.JWE(
+        payload,
+        recipient=cek,
+        protected=protected_header
+    )
+    return jwe_obj.serialize(compact=True)
+
+
+def decrypt_jwe_with_cek(token, cek) -> Tuple[dict, bytes]:
+    """Decrypt JWE token with given key.
+
+    If you successfully exchanged CEK by using encrypt_jwe / decrypt_jwe,
+    then no longer need to generate CEK and its KEK.
+
+    :param token: JWE token to be decrypted
+    :param cek: Content Encryption Key extracted from JWE token enc/dec process.
+    :return Tuple[dict, bytes]: JOSE Header, Payload
+    """
+    jwe_obj = jwe.JWE()
+    jwe_obj.deserialize(
+        token,
+        key=cek
     )
     return jwe_obj.jose_header, jwe_obj.payload
