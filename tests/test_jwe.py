@@ -5,7 +5,10 @@ from assam.jwt import (
     encrypt_jwe, encrypt_jwe_with_cek,
     decrypt_jwe, decrypt_jwe_with_cek
 )
+from assam.jwt.jwe import get_kid_from_jwe_header
 from .helper import ec_key_pair
+
+from jwcrypto import jwk
 
 
 class TestEncryptJWE:
@@ -88,10 +91,30 @@ class TestSample:
         # ==========REPLY==========
         # GIVEN Recipient encrypts payload using CEK, to reply ACK message or something.
         ack_message = b"ACK!"
-        jwe_token = encrypt_jwe_with_cek(derived_cek, ack_message)
+        jwe_token = encrypt_jwe_with_cek(derived_cek, ack_message, kid="TOKEN")
 
         # WHEN Sender decrypts JWE token using CEK
         header, actual_payload = decrypt_jwe_with_cek(jwe_token, cek_sender)
 
         # THEN The payload should be decrypted without any problem
         assert actual_payload == ack_message
+
+    def test_get_token_from_header(self):
+        # GIVEN I have a CEK, which is derived through key exchange.
+        derived_cek = jwk.JWK.generate(kty="oct", size=128)
+        import base64
+        key_for_aes_enc = derived_cek.export_symmetric(as_dict=True)["k"]
+        key_for_aes_enc = key_for_aes_enc + "==="
+        assert len(base64.urlsafe_b64decode(key_for_aes_enc)) == 16  # A128GCM key
+
+        # AND I have a payload and token
+        payload = b"hello?"
+        auth_token = "GENERATED_AUTH_TOKEN"
+
+        # WHEN I encrypt payload using CEK
+        jwe_token = encrypt_jwe_with_cek(derived_cek, payload, kid=auth_token)
+
+        # THEN Recipient can retrieve a token
+        extracted_auth_token = get_kid_from_jwe_header(jwe_token)
+        # AND The token must be same with sender's one
+        assert auth_token == extracted_auth_token

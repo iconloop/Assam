@@ -1,5 +1,5 @@
 import json
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional
 
 from jwcrypto import jwk, jwe
 
@@ -62,7 +62,7 @@ def decrypt_jwe(token: str, pri_key: str) -> Tuple[dict, bytes, jwk.JWK]:
     return jwe_obj.jose_header, jwe_obj.payload, cek
 
 
-def encrypt_jwe_with_cek(cek, payload: Union[str, bytes, dict]) -> str:
+def encrypt_jwe_with_cek(cek, payload: Union[str, bytes, dict], kid: str) -> str:
     """Encrypt JWE token with given key.
 
     If you successfully exchanged CEK by using encrypt_jwe / decrypt_jwe,
@@ -70,12 +70,14 @@ def encrypt_jwe_with_cek(cek, payload: Union[str, bytes, dict]) -> str:
 
     :param cek: Content Encryption Key extracted from JWE token enc/dec process.
     :param payload: Content to be encrypted by CEK.
+    :param kid: A Token which indicates CEK. It is passed to recipient as a `kid` in JOSE header.
     :return: JWE token
     """
     protected_header = {
         "alg": "dir",
         "enc": "A128GCM",
         "typ": "JWE",
+        "kid": kid
     }
 
     if isinstance(payload, dict):
@@ -105,3 +107,28 @@ def decrypt_jwe_with_cek(token, cek) -> Tuple[dict, bytes]:
         key=cek
     )
     return jwe_obj.jose_header, jwe_obj.payload
+
+
+def get_kid_from_jwe_header(token: str) -> Optional[bytes]:
+    """Extract kid from JWE token.
+
+    If you successfully exchanged CEK by using encrypt_jwe / decrypt_jwe,
+    then sender may encrypt the payload using exchanged CEK, with alg key in header is set as **DIR**.
+
+    In this case, sender must contain a hint for recipient to identify the sender's encryption key.
+    This function is for extracting the hint (kid) from the message, in order to know how to decrypt the message.
+
+    .. note:
+    If no **kid** exist, then JWE must contain **epk** for exchanging CEK.
+
+    :param token: JWE token which is expected to contain kid
+    :return: kid. If no kid is found, then returns None
+    """
+    import base64
+    import json
+
+    header = token.split(".")[0]
+    deserialized_header = base64.urlsafe_b64decode(header + "===")
+    jose_header = json.loads(deserialized_header)
+
+    return jose_header.get("kid")
