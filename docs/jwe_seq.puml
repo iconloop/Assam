@@ -1,0 +1,39 @@
+@startuml
+Actor Sender as sender
+Actor Recipient as recipient
+
+==상대방의 공개 키 획득==
+recipient -> recipient: 키 페어 생성 (EC)
+recipient -> sender: 공개 키
+note right: 최초 공개 키 획득 방법은 자유롭게..
+
+==시크릿 교환==
+sender -> sender: 임시 키 페어 생성 (EC)
+sender -> sender: 상대방의 공개 키 + 임시 생성된 개인 키로 KEK 유도
+sender -> sender: CEK 생성 & KEK으로 암호화
+sender -> recipient: JWE
+note left #AAFFAA: 폼 1*
+
+recipient -> recipient: JWE에 담긴 공개 키 + 개인 키로 KEK 유도
+recipient -> recipient: CEK & 페이로드 복호화
+note over sender, recipient: 이로서 양자는 같은 CEK를 갖게 되었다.
+
+==시크릿 매핑==
+recipient -> recipient: CEK에 매핑할 토큰 생성
+recipient -> recipient: 토큰을 JWE 헤더에 담음
+recipient -> recipient: 키 유도 없이, 공유된 CEK로 메시지 암호화
+recipient --> sender: JWE
+note right #AAFFAA: 폼 2*
+
+sender -> sender: 토큰을 꺼내서 CEK에 매핑하여 관리
+sender -> sender: 페이로드 복호화
+
+==토큰만을 이용해 통신==
+sender -> sender: 받은 토큰을 JWE 헤더에 넣음
+sender -> sender: 토큰에 매핑된 CEK로 페이로드 암호화
+sender -> recipient: JWE
+note left #AAFFAA: 폼 2*
+
+recipient -> recipient: 토큰으로부터 CEK를 찾음
+recipient -> recipient: 페이로드 복호화
+@enduml
