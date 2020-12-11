@@ -1,5 +1,7 @@
-from jwcrypto.jwk import JWK
+import base64
+import json
 
+from jwcrypto.jwk import JWK
 
 possible_curves = [
     "P-256", "secp256k1"
@@ -22,3 +24,20 @@ def generate_jwk(curve: str = "P-256") -> JWK:
         raise ValueError(f"Curves must be one of {possible_curves}.")
 
     return JWK.generate(kty="EC", crv=curve)
+
+
+def load_jwk(token):
+    """Load JWK from header.
+
+    Use this to extract epk from JOSE header.
+
+    :param token: JWE string
+    :return:
+    """
+
+    header = token.split(".")[0]
+    header = base64.urlsafe_b64decode(header + "===")
+    header = json.loads(header)
+    epk: dict = header["epk"]
+
+    return JWK.import_key(**epk)
