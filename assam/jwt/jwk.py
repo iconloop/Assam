@@ -6,7 +6,7 @@ possible_curves = [
 ]
 
 
-def generate_jwk(curve: str) -> JWK:
+def generate_jwk(curve: str = "P-256") -> JWK:
     """Generate JWK.
 
     .. Note:

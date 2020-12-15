@@ -1,25 +1,24 @@
 import pytest
+from jwcrypto import jwk
 from jwcrypto.jwe import InvalidJWEData
 
 from assam.jwt import (
     encrypt_jwe, encrypt_jwe_with_cek,
-    decrypt_jwe, decrypt_jwe_with_cek
+    decrypt_jwe, decrypt_jwe_with_cek, generate_jwk
 )
 from assam.jwt.jwe import get_kid_from_jwe_header
-from .helper import ec_key_pair
-
-from jwcrypto import jwk
 
 
 class TestEncryptJWE:
-    def test_encrypt(self):
-        public_key, private_key = ec_key_pair()
+    @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
+    def test_encrypt(self, curve):
+        key_pair = generate_jwk(curve)
 
         # GIVEN I have a payload
         payload = b"hello?"  # Could be json serialized obj
 
         # WHEN I created token
-        jwe_token, cek = encrypt_jwe(public_key, payload)
+        jwe_token, cek = encrypt_jwe(key_pair, payload)
 
         # THEN It must have prefer form
         each_parts = jwe_token.split(".")
@@ -35,10 +34,10 @@ class TestEncryptJWE:
         {"type": "this is dict"}
     ], ids=["string", "bytes", "dict"])
     def test_various_payload_types(self, payload):
-        public_key, private_key = ec_key_pair()
+        key_pair = generate_jwk()
 
         # WHEN I created token
-        jwe_token, cek = encrypt_jwe(public_key, payload)
+        jwe_token, cek = encrypt_jwe(key_pair, payload)
 
         # THEN It must have prefer form
         each_parts = jwe_token.split(".")
@@ -47,44 +46,44 @@ class TestEncryptJWE:
 
 class TestDecryptJWE:
     def test_decrypt(self):
-        recipient_pub_key, recipient_pri_key = ec_key_pair()
+        recipient_key_pair = generate_jwk()
 
         # GIVEN The Sender created token by using the recipient's public key
         payload = b"hello?"
-        jwe_token, cek = encrypt_jwe(recipient_pub_key, payload)
+        jwe_token, cek = encrypt_jwe(recipient_key_pair, payload)
 
         # WHEN The recipient decrypt it with the recipient's own private key
-        header, actual_payload, cek = decrypt_jwe(jwe_token, recipient_pri_key)
+        header, actual_payload, cek = decrypt_jwe(jwe_token, recipient_key_pair)
 
         # THEN It should be readable
         assert actual_payload == payload
 
     def test_decrypt_with_wrong_key(self):
-        recipient_pub_key, recipient_pri_key = ec_key_pair()
-        another_pub_key, another_pri_key = ec_key_pair()
-        assert not recipient_pub_key == another_pub_key
-        assert not recipient_pri_key == another_pri_key
+        recipient_key_pair = generate_jwk()
+        another_key_pair = generate_jwk()
+        assert recipient_key_pair.export_public() != another_key_pair.export_public()
+        assert recipient_key_pair.export_private() != another_key_pair.export_private()
 
         # GIVEN The Sender created token by using the recipient's public key
         payload = b"hello?"
-        token, cek = encrypt_jwe(recipient_pub_key, payload)
+        token, cek = encrypt_jwe(recipient_key_pair, payload)
 
         # WHEN The recipient tries to decrypt with the wrong private key
         # THEN Exception must be raised
         with pytest.raises(InvalidJWEData):
-            header, actual_payload, cek = decrypt_jwe(token, another_pri_key)
+            header, actual_payload, cek = decrypt_jwe(token, another_key_pair)
 
 
 class TestSample:
     def test_scenario(self):
-        recipient_pub_key, recipient_pri_key = ec_key_pair()
+        recipient_key_pair = generate_jwk()
 
         # GIVEN The Sender created token by using the recipient's public key
         payload = b"hello?"
-        _jwe_token, cek_sender = encrypt_jwe(recipient_pub_key, payload)
+        _jwe_token, cek_sender = encrypt_jwe(recipient_key_pair, payload)
 
         # WHEN Recipient derives CEK
-        _header, _decrypted_payload, derived_cek = decrypt_jwe(_jwe_token, recipient_pri_key)
+        _header, _decrypted_payload, derived_cek = decrypt_jwe(_jwe_token, recipient_key_pair)
         # THEN CEK both sides must equal
         assert cek_sender.export() == derived_cek.export()
 

@@ -6,7 +6,7 @@ from jwcrypto import jwk, jwe
 from ._helper import extract_cek
 
 
-def encrypt_jwe(pub_key: str, payload: Union[str, bytes, dict]) -> Tuple[str, jwk.JWK]:
+def encrypt_jwe(pub_key: jwk.JWK, payload: Union[str, bytes, dict]) -> Tuple[str, jwk.JWK]:
     """Encrypt JWE token.
 
     **JWE format**:
@@ -21,7 +21,6 @@ def encrypt_jwe(pub_key: str, payload: Union[str, bytes, dict]) -> Tuple[str, jw
     :param payload: Payload to be sent
     :return Tuple[str, jwcrypto.jwk.JWK]: serialized JWE token, CEK  # TODO: CEK type could be changed.
     """
-    peer_pub_key = jwk.JWK.from_json(pub_key)
     protected_header = {
         "alg": "ECDH-ES+A128KW",
         "enc": "A128GCM",
@@ -33,7 +32,7 @@ def encrypt_jwe(pub_key: str, payload: Union[str, bytes, dict]) -> Tuple[str, jw
 
     jwe_obj = jwe.JWE(
         payload,
-        recipient=peer_pub_key,
+        recipient=pub_key,
         protected=protected_header
     )
     cek = extract_cek(jwe_obj)
@@ -41,7 +40,7 @@ def encrypt_jwe(pub_key: str, payload: Union[str, bytes, dict]) -> Tuple[str, jw
     return jwe_obj.serialize(compact=True), cek
 
 
-def decrypt_jwe(token: str, pri_key: str) -> Tuple[dict, bytes, jwk.JWK]:
+def decrypt_jwe(token: str, pri_key: jwk.JWK) -> Tuple[dict, bytes, jwk.JWK]:
     """Decrypt given JWE token.
 
     :param token: JWE Token to be decrypted  # FIXME: follows JWK format currently.
@@ -51,7 +50,6 @@ def decrypt_jwe(token: str, pri_key: str) -> Tuple[dict, bytes, jwk.JWK]:
     :raises:
         InvalidJWEData: if failed in token decryption, normally in case of wrong private key supplied.
     """
-    pri_key = jwk.JWK.from_json(pri_key)
     jwe_obj = jwe.JWE()
     jwe_obj.deserialize(
         token,

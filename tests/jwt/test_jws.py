@@ -1,18 +1,17 @@
 import pytest
 
-from assam.jwt import encrypt_jws, decrypt_jws
-from .helper import ec_key_pair
+from assam.jwt import encrypt_jws, decrypt_jws, generate_jwk
 
 
 class TestEncryptJWS:
     def test_encrypt(self):
-        public_key, private_key = ec_key_pair()
+        key_pair = generate_jwk()
 
         # GIVEN I have a payload
         payload = b"hello?"
 
         # WHEN I created token
-        token = encrypt_jws(private_key, payload)
+        token = encrypt_jws(key_pair, payload)
 
         # THEN It must have three parts
         each_parts = token.split(".")
@@ -28,8 +27,8 @@ class TestEncryptJWS:
         {"type": "this is dict"}
     ], ids=["string", "bytes", "dict"])
     def test_various_payload_types(self, payload):
-        public_key, private_key = ec_key_pair()
-        jws_token = encrypt_jws(private_key, payload)
+        key_pair = generate_jwk()
+        jws_token = encrypt_jws(key_pair, payload)
 
         # THEN It must have three parts
         each_parts = jws_token.split(".")
@@ -42,22 +41,22 @@ class TestEncryptJWS:
 
 class TestDecryptJWS:
     def test_decrypt(self):
-        signer_pub_key, signer_pri_key = ec_key_pair()
+        signer_key_pair = generate_jwk()
 
         payload = b"hello?"
-        jws_token = encrypt_jws(signer_pri_key, payload)
+        jws_token = encrypt_jws(signer_key_pair, payload)
 
-        header, actual_payload = decrypt_jws(jws_token, signer_pub_key)
+        header, actual_payload = decrypt_jws(jws_token, signer_key_pair)
 
         assert actual_payload == payload
 
     def test_signature_tempered(self):
-        public_key, private_key = ec_key_pair()
+        signer_key_pair = generate_jwk()
         payload = b"hello?"
-        jws_token = encrypt_jws(private_key, payload)
+        jws_token = encrypt_jws(signer_key_pair, payload)
 
         # WHEN I decrypt normally, THEN succeeded in verification.
-        decrypt_jws(jws_token, public_key)
+        decrypt_jws(jws_token, signer_key_pair)
 
         header_enc, payload_enc, sign_enc = jws_token.split(".")
 
@@ -69,4 +68,4 @@ class TestDecryptJWS:
         # THEN failed in verification
         from jwcrypto.jws import InvalidJWSSignature
         with pytest.raises(InvalidJWSSignature):
-            decrypt_jws(token_tempered, public_key)
+            decrypt_jws(token_tempered, signer_key_pair)
