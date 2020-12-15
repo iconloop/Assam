@@ -1,10 +1,10 @@
 import json
-from typing import Union, Tuple
+from typing import Tuple
 
 from jwcrypto import jwk, jws
 
 
-def encrypt_jws(signer_key: jwk.JWK, payload: Union[str, bytes, dict]) -> str:
+def encrypt_jws(signer_key: jwk.JWK, payload: dict) -> str:
     """Encrypt JWS token.
 
     **JWS format**:
@@ -36,14 +36,14 @@ def encrypt_jws(signer_key: jwk.JWK, payload: Union[str, bytes, dict]) -> str:
     return jws_obj.serialize(compact=True)
 
 
-def decrypt_jws(token: str, signer_pub_key: jwk.JWK) -> Tuple[dict, bytes]:
+def decrypt_jws(token: str, signer_pub_key: jwk.JWK) -> Tuple[dict, dict]:
     """Decrypt given JWS token.
 
     Note that payload always bytes.
 
     :param token: Compact JWS token to be verified
     :param signer_pub_key: Signer's public key
-    :return Tuple[dict, bytes]: JOSE Header, Payload
+    :return Tuple[dict, dict]: JOSE Header, Payload
 
     :raise jwcrypto.jws.InvalidJWSSignature
     """
@@ -51,4 +51,4 @@ def decrypt_jws(token: str, signer_pub_key: jwk.JWK) -> Tuple[dict, bytes]:
     jws_obj.deserialize(token)
     jws_obj.verify(signer_pub_key)  # raises jwcrypto.jws.InvalidJWSSignature if failed
 
-    return jws_obj.jose_header, jws_obj.payload
+    return jws_obj.jose_header, json.loads(jws_obj.payload)

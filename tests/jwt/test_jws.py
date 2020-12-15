@@ -2,13 +2,14 @@ import pytest
 
 from assam.jwt import encrypt_jws, decrypt_jws, generate_jwk
 
+payload = {
+    "claim": "testing."
+}
+
 
 class TestEncryptJWS:
     def test_encrypt(self):
         key_pair = generate_jwk()
-
-        # GIVEN I have a payload
-        payload = b"hello?"
 
         # WHEN I created token
         token = encrypt_jws(key_pair, payload)
@@ -21,29 +22,11 @@ class TestEncryptJWS:
         for part in each_parts:
             assert part
 
-    @pytest.mark.parametrize("payload", [
-        "this is string",
-        b"this is bytes",
-        {"type": "this is dict"}
-    ], ids=["string", "bytes", "dict"])
-    def test_various_payload_types(self, payload):
-        key_pair = generate_jwk()
-        jws_token = encrypt_jws(key_pair, payload)
-
-        # THEN It must have three parts
-        each_parts = jws_token.split(".")
-        assert len(each_parts) == 3
-
-        # AND None of them is empty
-        for part in each_parts:
-            assert part
-
 
 class TestDecryptJWS:
     def test_decrypt(self):
         signer_key_pair = generate_jwk()
 
-        payload = b"hello?"
         jws_token = encrypt_jws(signer_key_pair, payload)
 
         header, actual_payload = decrypt_jws(jws_token, signer_key_pair)
@@ -52,7 +35,6 @@ class TestDecryptJWS:
 
     def test_signature_tempered(self):
         signer_key_pair = generate_jwk()
-        payload = b"hello?"
         jws_token = encrypt_jws(signer_key_pair, payload)
 
         # WHEN I decrypt normally, THEN succeeded in verification.

@@ -1,12 +1,12 @@
 import json
-from typing import Union, Tuple, Optional
+from typing import Tuple, Optional
 
 from jwcrypto import jwk, jwe
 
 from ._helper import extract_cek
 
 
-def encrypt_jwe(pub_key: jwk.JWK, payload: Union[str, bytes, dict]) -> Tuple[str, jwk.JWK]:
+def encrypt_jwe(pub_key: jwk.JWK, payload: dict) -> Tuple[str, jwk.JWK]:
     """Encrypt JWE token.
 
     **JWE format**:
@@ -40,12 +40,12 @@ def encrypt_jwe(pub_key: jwk.JWK, payload: Union[str, bytes, dict]) -> Tuple[str
     return jwe_obj.serialize(compact=True), cek
 
 
-def decrypt_jwe(token: str, pri_key: jwk.JWK) -> Tuple[dict, bytes, jwk.JWK]:
+def decrypt_jwe(token: str, pri_key: jwk.JWK) -> Tuple[dict, dict, jwk.JWK]:
     """Decrypt given JWE token.
 
     :param token: JWE Token to be decrypted  # FIXME: follows JWK format currently.
     :param pri_key: Matched private key to be used in JWE creation.
-    :return Tuple[dict, bytes, jwcrypto.jwk.JWK]: JOSE Header, Payload  # TODO: CEK type could be changed.
+    :return Tuple[dict, dict, jwcrypto.jwk.JWK]: JOSE Header, Payload  # TODO: CEK type could be changed.
 
     :raises:
         InvalidJWEData: if failed in token decryption, normally in case of wrong private key supplied.
@@ -57,10 +57,10 @@ def decrypt_jwe(token: str, pri_key: jwk.JWK) -> Tuple[dict, bytes, jwk.JWK]:
     )
     cek = extract_cek(jwe_obj)
 
-    return jwe_obj.jose_header, jwe_obj.payload, cek
+    return jwe_obj.jose_header, json.loads(jwe_obj.payload), cek
 
 
-def encrypt_jwe_with_cek(cek, payload: Union[str, bytes, dict], kid: str) -> str:
+def encrypt_jwe_with_cek(cek, payload: dict, kid: str) -> str:
     """Encrypt JWE token with given key.
 
     If you successfully exchanged CEK by using encrypt_jwe / decrypt_jwe,
@@ -89,7 +89,7 @@ def encrypt_jwe_with_cek(cek, payload: Union[str, bytes, dict], kid: str) -> str
     return jwe_obj.serialize(compact=True)
 
 
-def decrypt_jwe_with_cek(token, cek) -> Tuple[dict, bytes]:
+def decrypt_jwe_with_cek(token, cek) -> Tuple[dict, dict]:
     """Decrypt JWE token with given key.
 
     If you successfully exchanged CEK by using encrypt_jwe / decrypt_jwe,
@@ -104,10 +104,10 @@ def decrypt_jwe_with_cek(token, cek) -> Tuple[dict, bytes]:
         token,
         key=cek
     )
-    return jwe_obj.jose_header, jwe_obj.payload
+    return jwe_obj.jose_header, json.loads(jwe_obj.payload)
 
 
-def get_kid_from_jwe_header(token: str) -> Optional[bytes]:
+def get_kid_from_jwe_header(token: str) -> Optional[str]:
     """Extract kid from JWE token.
 
     If you successfully exchanged CEK by using encrypt_jwe / decrypt_jwe,

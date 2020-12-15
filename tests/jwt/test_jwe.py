@@ -8,14 +8,15 @@ from assam.jwt import (
 )
 from assam.jwt.jwe import get_kid_from_jwe_header
 
+payload = {
+    "claim": "testing."
+}
+
 
 class TestEncryptJWE:
     @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
     def test_encrypt(self, curve):
         key_pair = generate_jwk(curve)
-
-        # GIVEN I have a payload
-        payload = b"hello?"  # Could be json serialized obj
 
         # WHEN I created token
         jwe_token, cek = encrypt_jwe(key_pair, payload)
@@ -28,28 +29,12 @@ class TestEncryptJWE:
         for part in each_parts:
             assert part
 
-    @pytest.mark.parametrize("payload", [
-        "this is string",
-        b"this is bytes",
-        {"type": "this is dict"}
-    ], ids=["string", "bytes", "dict"])
-    def test_various_payload_types(self, payload):
-        key_pair = generate_jwk()
-
-        # WHEN I created token
-        jwe_token, cek = encrypt_jwe(key_pair, payload)
-
-        # THEN It must have prefer form
-        each_parts = jwe_token.split(".")
-        assert len(each_parts) == 5
-
 
 class TestDecryptJWE:
     def test_decrypt(self):
         recipient_key_pair = generate_jwk()
 
         # GIVEN The Sender created token by using the recipient's public key
-        payload = b"hello?"
         jwe_token, cek = encrypt_jwe(recipient_key_pair, payload)
 
         # WHEN The recipient decrypt it with the recipient's own private key
@@ -65,7 +50,6 @@ class TestDecryptJWE:
         assert recipient_key_pair.export_private() != another_key_pair.export_private()
 
         # GIVEN The Sender created token by using the recipient's public key
-        payload = b"hello?"
         token, cek = encrypt_jwe(recipient_key_pair, payload)
 
         # WHEN The recipient tries to decrypt with the wrong private key
@@ -79,7 +63,6 @@ class TestSample:
         recipient_key_pair = generate_jwk()
 
         # GIVEN The Sender created token by using the recipient's public key
-        payload = b"hello?"
         _jwe_token, cek_sender = encrypt_jwe(recipient_key_pair, payload)
 
         # WHEN Recipient derives CEK
@@ -89,7 +72,7 @@ class TestSample:
 
         # ==========REPLY==========
         # GIVEN Recipient encrypts payload using CEK, to reply ACK message or something.
-        ack_message = b"ACK!"
+        ack_message = {"msg": "ACK!"}
         jwe_token = encrypt_jwe_with_cek(derived_cek, ack_message, kid="TOKEN")
 
         # WHEN Sender decrypts JWE token using CEK
@@ -107,7 +90,6 @@ class TestSample:
         assert len(base64.urlsafe_b64decode(key_for_aes_enc)) == 16  # A128GCM key
 
         # AND I have a payload and token
-        payload = b"hello?"
         auth_token = "GENERATED_AUTH_TOKEN"
 
         # WHEN I encrypt payload using CEK
