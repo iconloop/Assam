@@ -16,7 +16,7 @@ jobs:
         python -V
         pip install -e .[tests]
     - name: Run unit tests
-      run: pytest -vx
+      run: pytest -vx -rsx
   lint:
     runs-on: ubuntu-18.04
     steps:
