@@ -7,9 +7,10 @@ payload = {
 }
 
 
+@pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
 class TestEncryptJWS:
-    def test_encrypt(self):
-        key_pair = generate_jwk()
+    def test_encrypt(self, curve):
+        key_pair = generate_jwk(curve)
 
         # WHEN I created token
         token = encrypt_jws(key_pair, payload)
@@ -23,18 +24,19 @@ class TestEncryptJWS:
             assert part
 
 
+@pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
 class TestDecryptJWS:
-    def test_decrypt(self):
-        signer_key_pair = generate_jwk()
+    def test_decrypt(self, curve):
+        signer_key_pair = generate_jwk(curve)
 
         jws_token = encrypt_jws(signer_key_pair, payload)
 
         header, actual_payload = decrypt_jws(jws_token, signer_key_pair)
 
-        assert actual_payload == payload
+        assert actual_payload["claim"] == payload["claim"]
 
-    def test_signature_tempered(self):
-        signer_key_pair = generate_jwk()
+    def test_signature_tempered(self, curve):
+        signer_key_pair = generate_jwk(curve)
         jws_token = encrypt_jws(signer_key_pair, payload)
 
         # WHEN I decrypt normally, THEN succeeded in verification.
@@ -48,6 +50,5 @@ class TestDecryptJWS:
         assert not jws_token == token_tempered
 
         # THEN failed in verification
-        from jwcrypto.jws import InvalidJWSSignature
-        with pytest.raises(InvalidJWSSignature):
+        with pytest.raises(ValueError, match="Failed to verify JWS"):  # TODO: Exc type
             decrypt_jws(token_tempered, signer_key_pair)

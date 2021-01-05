@@ -1,7 +1,12 @@
-import json
 from typing import Tuple
 
-from jwcrypto import jwk, jws
+import python_jwt
+from jwcrypto import jwk
+
+_verification_alg = {
+    "P-256": "ES256",
+    "secp256k1": "ES256K"
+}
 
 
 def encrypt_jws(signer_key: jwk.JWK, payload: dict) -> str:
@@ -17,23 +22,10 @@ def encrypt_jws(signer_key: jwk.JWK, payload: dict) -> str:
     :param payload: Contents of being signed
     :return: JWE Token
     """
-    protected_header = {
-        "alg": "ES256",
-        "typ": "JWS",
-        "kid": signer_key.thumbprint()
-    }
-
-    if isinstance(payload, dict):
-        payload = json.dumps(payload)
-
-    jws_obj = jws.JWS(payload)
-    jws_obj.add_signature(
-        signer_key,
-        None,
-        protected_header,
-        None
+    alg = _verification_alg[signer_key.key_curve]
+    return python_jwt.generate_jwt(
+        payload, signer_key, alg
     )
-    return jws_obj.serialize(compact=True)
 
 
 def decrypt_jws(token: str, signer_pub_key: jwk.JWK) -> Tuple[dict, dict]:
@@ -45,10 +37,16 @@ def decrypt_jws(token: str, signer_pub_key: jwk.JWK) -> Tuple[dict, dict]:
     :param signer_pub_key: Signer's public key
     :return Tuple[dict, dict]: JOSE Header, Payload
 
-    :raise jwcrypto.jws.InvalidJWSSignature
+    :raise ValueError  # TODO: Exc type?
     """
-    jws_obj = jws.JWS()
-    jws_obj.deserialize(token)
-    jws_obj.verify(signer_pub_key)  # raises jwcrypto.jws.InvalidJWSSignature if failed
+    try:
+        jose_header, payload = python_jwt.verify_jwt(
+            token,
+            signer_pub_key,
+            allowed_algs=["ES256", "ES256K"],
+            checks_optional=True
+        )
+    except Exception as e:  # TODO: Exc type?
+        raise ValueError("Failed to verify JWS.") from e
 
-    return jws_obj.jose_header, json.loads(jws_obj.payload)
+    return jose_header, payload
