@@ -2,12 +2,12 @@ import abc
 from typing import TYPE_CHECKING, Type
 
 if TYPE_CHECKING:
-    from assam.did.score import DidScore
+    from assam.did.score_client import DidScoreClient
 
 
 class Verifier(abc.ABC):
-    def __init__(self, did_service: "DidScore", **kwargs):
-        self._did_service: DidScore = did_service
+    def __init__(self, did_service: "DidScoreClient", **kwargs):
+        self._did_service: "DidScoreClient" = did_service
 
     @abc.abstractmethod
     def verify(self, presentation: dict) -> bool:
