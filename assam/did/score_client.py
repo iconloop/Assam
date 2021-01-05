@@ -33,6 +33,8 @@ class DidScoreClient(ScoreClient):
         return self._icon_service.call(call)
 
     def read(self, did: str):
+        # TODO: What if the supplied `did` was not found from DID SCORE?
+        # TODO: Return type hint needed
         call = self._create_call().\
             method("read").\
             params({"did": did}).\

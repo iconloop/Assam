@@ -10,12 +10,21 @@ class Verifier(abc.ABC):
         self._did_service: "DidScoreClient" = did_service
 
     @abc.abstractmethod
-    def verify(self, presentation: dict) -> bool:
+    def verify_vp(self, presentation: dict) -> bool:
         """Verify VP.
 
         .. note: This is responsible for verification of VP, not for JWT HMAC verification
 
         :param presentation:
+        :return:
+        """
+        pass
+
+    @abc.abstractmethod
+    def verify_did(self, did: "str") -> bool:
+        """Verify DID.
+
+        :param did:
         :return:
         """
         pass
@@ -27,9 +36,7 @@ class Verifier(abc.ABC):
 
     def _verify_vc_issuer(self, credential) -> bool:  # TODO: signature type
         issuer_did = credential.get("iss")
-        issuer_doc = self._did_service.read(issuer_did)
-        if not issuer_doc:
-            raise ValueError
+        self.verify_did(issuer_did)
 
         return True
 
@@ -47,7 +54,7 @@ class Verifier(abc.ABC):
 
 
 class ZzeungVerifier(Verifier):
-    def verify(self, presentation: dict) -> bool:
+    def verify_vp(self, presentation: dict) -> bool:
         # FIXME:
         # try:
         #     credentials = presentation.get("credentials")
@@ -56,4 +63,11 @@ class ZzeungVerifier(Verifier):
         # except:
         #     return False
         #
+        return True
+
+    def verify_did(self, did: "str") -> bool:
+        issuer_doc = self._did_service.read(did)
+        if not issuer_doc:
+            return False  # FIXME: Raise exception, or bool return
+
         return True
