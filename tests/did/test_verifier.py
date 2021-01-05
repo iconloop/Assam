@@ -1,8 +1,7 @@
+from typing import Dict
 from unittest.mock import MagicMock
 
 import pytest
-from iconsdk.icon_service import IconService
-from iconsdk.wallet.wallet import KeyWallet
 
 from assam.did.score_client import DidScoreClient
 from assam.did.verifier import ZzeungVerifier
@@ -61,28 +60,53 @@ def create_vp() -> dict:
     }
 
 
+# FIXME: MOCKED CONTRACT DB!
+DID = str  # FIXME: Need more realistic sample
+DidDocument = dict  # FIXME: Need more realistic sample
+did_storage: Dict[DID, DidDocument] = {
+    "hi:i:m:issuer": {"did": "did"}
+}
+
+
 class TestVerifier:
     @pytest.fixture
     def did_score_client(self):
-        return DidScoreClient(
-            icon_service=MagicMock(IconService),
-            score_addr="fdsa",
-            wallet=MagicMock(KeyWallet)
-        )
+        mock_did_score: DidScoreClient = MagicMock(DidScoreClient)
+        mock_did_score.get_context.return_value = "bulbulbulbubl"
+        mock_did_score.read = lambda did: did_storage.get(did)
+
+        return mock_did_score
 
     @pytest.fixture
     def verifier(self, did_score_client):
         return ZzeungVerifier(did_service=did_score_client)  # FIXME: VcSCORE Needed, even if Verifier does not need it.
 
-    @pytest.mark.xfail
     def test_verify_presentation(self, verifier: ZzeungVerifier):
-        pytest.xfail(reason="Verification method is not implemented!")  # FIXME:
-
         # Given I have a VP from Client
         vp = create_vp()
 
         # WHEN I verify
-        is_verified = verifier.verify(vp)
+        is_verified = verifier.verify_vp(vp)
 
         # THEN It should be passed
         assert is_verified is True
+
+    def test_verify_did(self, verifier: ZzeungVerifier):
+        # Given I have a DID to be verified
+        issuer_did = "hi:i:m:issuer"
+
+        # WHEN I verify
+        is_verified = verifier.verify_did(issuer_did)
+
+        # THEN It should be passed
+        assert is_verified is True
+
+    def test_verify_did_not_exist(self, verifier: ZzeungVerifier):
+        # Given I have a DID to be verified, but expected it is invalid one
+        issuer_did = "unknown:entity"
+
+        # WHEN I verify
+        is_verified = verifier.verify_did(issuer_did)
+
+        # THEN It should be failed
+        assert is_verified is False
