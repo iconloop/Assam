@@ -23,8 +23,8 @@ def get_jose_header_from_token(token) -> dict:
     return json.loads(deserialized_header)
 
 
+@pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
 class TestEncryptJWE:
-    @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
     def test_encrypted_is_valid_jwe_spec(self, curve):
         key_pair = generate_jwk(curve)
 
@@ -39,6 +39,30 @@ class TestEncryptJWE:
         for part in each_parts:
             assert part
 
+    def test_header_has_proper_epk(self, curve):
+        # GIVEN I created a key pair
+        key_pair = generate_jwk(curve)
+
+        # WHEN I created token
+        jwe_token, cek = encrypt_jwe(key_pair, payload)
+
+        # THEN It must have epk in header
+        header = jwe_token.split(".")[0]
+        header = base64.urlsafe_b64decode(header + "===")
+        header = json.loads(header)
+        assert "epk" in header
+
+        # AND it should contain valid key curve
+        epk: dict = header["epk"]
+        assert epk["kty"] == "EC"
+        assert epk["crv"] == curve
+
+        # AND It should contain public params of EC key
+        assert "x" in epk
+        assert "y" in epk
+
+
+class TestEncryptWithCEK:
     def test_kid_check_in_encrypt_with_cek(self):
         expected_kid = "ThisIsMyHint"
         cek = jwk.JWK.generate(kty="oct")
@@ -69,29 +93,6 @@ class TestEncryptJWE:
 
         # AND neither the kid value does not
         assert get_kid_from_jwe_header(jwe_token) is None
-
-    @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
-    def test_header_has_proper_epk(self, curve):
-        # GIVEN I created a key pair
-        key_pair = generate_jwk(curve)
-
-        # WHEN I created token
-        jwe_token, cek = encrypt_jwe(key_pair, payload)
-
-        # THEN It must have epk in header
-        header = jwe_token.split(".")[0]
-        header = base64.urlsafe_b64decode(header + "===")
-        header = json.loads(header)
-        assert "epk" in header
-
-        # AND it should contain valid key curve
-        epk: dict = header["epk"]
-        assert epk["kty"] == "EC"
-        assert epk["crv"] == curve
-
-        # AND It should contain public params of EC key
-        assert "x" in epk
-        assert "y" in epk
 
 
 @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
