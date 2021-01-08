@@ -60,7 +60,7 @@ def decrypt_jwe(token: str, pri_key: jwk.JWK) -> Tuple[dict, dict, jwk.JWK]:
     return jwe_obj.jose_header, json.loads(jwe_obj.payload), cek
 
 
-def encrypt_jwe_with_cek(cek, payload: dict, kid: str) -> str:
+def encrypt_jwe_with_cek(cek, payload: dict, kid: Optional[str] = None) -> str:
     """Encrypt JWE token with given key.
 
     If you successfully exchanged CEK by using encrypt_jwe / decrypt_jwe,
@@ -75,8 +75,9 @@ def encrypt_jwe_with_cek(cek, payload: dict, kid: str) -> str:
         "alg": "dir",
         "enc": "A128GCM",
         "typ": "JWE",
-        "kid": kid
     }
+    if kid:
+        protected_header["kid"] = kid
 
     if isinstance(payload, dict):
         payload = json.dumps(payload)

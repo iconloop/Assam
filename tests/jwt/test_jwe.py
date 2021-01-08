@@ -13,6 +13,16 @@ payload = {
 }
 
 
+def get_jose_header_from_token(token) -> dict:
+    # Helper
+    import base64
+    import json
+
+    header = token.split(".")[0]
+    deserialized_header = base64.urlsafe_b64decode(header + "===")
+    return json.loads(deserialized_header)
+
+
 class TestEncryptJWE:
     @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
     def test_encrypt(self, curve):
@@ -28,6 +38,39 @@ class TestEncryptJWE:
         # AND None of them is empty
         for part in each_parts:
             assert part
+
+    @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
+    def test_kid_check_in_encrypt_with_cek(self, curve):
+        expected_kid = "ThisIsMyHint"
+        cek = jwk.JWK.generate(kty="oct")
+        payload = {
+            "testing": "value!"
+        }
+
+        # WHEN I encrypt payload using cek
+        # AND Supply kid
+        jwe_token = encrypt_jwe_with_cek(cek, payload, kid=expected_kid)
+
+        # THEN the kid in header should be equal to supplied kid
+        assert get_kid_from_jwe_header(jwe_token) == expected_kid
+
+    @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
+    def test_kid_should_be_optional_in_encrypt_with_cek(self, curve):
+        cek = jwk.JWK.generate(kty="oct")
+        payload = {
+            "testing": "value!"
+        }
+
+        # WHEN I encrypt payload using cek
+        # AND no kid is supplied
+        jwe_token = encrypt_jwe_with_cek(cek, payload)
+
+        # THEN the kid in header does not exist
+        jose_header = get_jose_header_from_token(jwe_token)
+        assert "kid" not in jose_header
+
+        # AND neither the kid value does not
+        assert get_kid_from_jwe_header(jwe_token) is None
 
 
 class TestDecryptJWE:
