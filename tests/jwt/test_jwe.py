@@ -1,3 +1,6 @@
+import base64
+import json
+
 import pytest
 from jwcrypto import jwk
 from jwcrypto.jwe import InvalidJWEData
@@ -13,19 +16,9 @@ payload = {
 }
 
 
-def get_jose_header_from_token(token) -> dict:
-    # Helper
-    import base64
-    import json
-
-    header = token.split(".")[0]
-    deserialized_header = base64.urlsafe_b64decode(header + "===")
-    return json.loads(deserialized_header)
-
-
+@pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
 class TestEncryptJWE:
-    @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
-    def test_encrypt(self, curve):
+    def test_encrypted_is_valid_jwe_spec(self, curve):
         key_pair = generate_jwk(curve)
 
         # WHEN I created token
@@ -39,8 +32,37 @@ class TestEncryptJWE:
         for part in each_parts:
             assert part
 
-    @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
-    def test_kid_check_in_encrypt_with_cek(self, curve):
+    def test_header_has_proper_epk(self, curve):
+        # GIVEN I created a key pair
+        key_pair = generate_jwk(curve)
+
+        # WHEN I created token
+        jwe_token, cek = encrypt_jwe(key_pair, payload)
+
+        # THEN It must have epk in header
+        header = jwe_token.split(".")[0]
+        header = base64.urlsafe_b64decode(header + "===")
+        header = json.loads(header)
+        assert "epk" in header
+
+        # AND it should contain valid key curve
+        epk: dict = header["epk"]
+        assert epk["kty"] == "EC"
+        assert epk["crv"] == curve
+
+        # AND It should contain public params of EC key
+        assert "x" in epk
+        assert "y" in epk
+
+
+class TestEncryptWithCEK:
+    def _get_jose_header_from_token(self, token) -> dict:
+        # Helper
+        header = token.split(".")[0]
+        deserialized_header = base64.urlsafe_b64decode(header + "===")
+        return json.loads(deserialized_header)
+
+    def test_kid_check_in_encrypt_with_cek(self):
         expected_kid = "ThisIsMyHint"
         cek = jwk.JWK.generate(kty="oct")
         payload = {
@@ -54,8 +76,7 @@ class TestEncryptJWE:
         # THEN the kid in header should be equal to supplied kid
         assert get_kid_from_jwe_header(jwe_token) == expected_kid
 
-    @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
-    def test_kid_should_be_optional_in_encrypt_with_cek(self, curve):
+    def test_kid_should_be_optional_in_encrypt_with_cek(self):
         cek = jwk.JWK.generate(kty="oct")
         payload = {
             "testing": "value!"
@@ -66,16 +87,17 @@ class TestEncryptJWE:
         jwe_token = encrypt_jwe_with_cek(cek, payload)
 
         # THEN the kid in header does not exist
-        jose_header = get_jose_header_from_token(jwe_token)
+        jose_header = self._get_jose_header_from_token(jwe_token)
         assert "kid" not in jose_header
 
         # AND neither the kid value does not
         assert get_kid_from_jwe_header(jwe_token) is None
 
 
+@pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
 class TestDecryptJWE:
-    def test_decrypt(self):
-        recipient_key_pair = generate_jwk()
+    def test_decrypt(self, curve):
+        recipient_key_pair = generate_jwk(curve)
 
         # GIVEN The Sender created token by using the recipient's public key
         jwe_token, cek = encrypt_jwe(recipient_key_pair, payload)
@@ -86,8 +108,8 @@ class TestDecryptJWE:
         # THEN It should be readable
         assert actual_payload == payload
 
-    def test_decrypt_with_wrong_key(self):
-        recipient_key_pair = generate_jwk()
+    def test_decrypt_with_wrong_key(self, curve):
+        recipient_key_pair = generate_jwk(curve)
         another_key_pair = generate_jwk()
         assert recipient_key_pair.export_public() != another_key_pair.export_public()
         assert recipient_key_pair.export_private() != another_key_pair.export_private()
@@ -102,8 +124,9 @@ class TestDecryptJWE:
 
 
 class TestSample:
-    def test_scenario(self):
-        recipient_key_pair = generate_jwk()
+    @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
+    def test_scenario(self, curve):
+        recipient_key_pair = generate_jwk(curve)
 
         # GIVEN The Sender created token by using the recipient's public key
         _jwe_token, cek_sender = encrypt_jwe(recipient_key_pair, payload)
