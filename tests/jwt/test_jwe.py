@@ -41,8 +41,7 @@ class TestEncryptJWE:
 
     @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
     def test_kid_check_in_encrypt_with_cek(self, curve):
-        key_pair = generate_jwk(curve)
-        expected_kid = key_pair.thumbprint()
+        expected_kid = "ThisIsMyHint"
         cek = jwk.JWK.generate(kty="oct")
         payload = {
             "testing": "value!"
@@ -57,12 +56,14 @@ class TestEncryptJWE:
 
     @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
     def test_kid_should_be_optional_in_encrypt_with_cek(self, curve):
-        key_pair = generate_jwk(curve)
         cek = jwk.JWK.generate(kty="oct")
+        payload = {
+            "testing": "value!"
+        }
 
         # WHEN I encrypt payload using cek
         # AND no kid is supplied
-        jwe_token = encrypt_jwe_with_cek(cek, key_pair)
+        jwe_token = encrypt_jwe_with_cek(cek, payload)
 
         # THEN the kid in header does not exist
         jose_header = get_jose_header_from_token(jwe_token)
