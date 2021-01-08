@@ -25,7 +25,7 @@ def get_jose_header_from_token(token) -> dict:
 
 class TestEncryptJWE:
     @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
-    def test_encrypted_string_has_jwe_spec(self, curve):
+    def test_encrypted_is_valid_jwe_spec(self, curve):
         key_pair = generate_jwk(curve)
 
         # WHEN I created token
