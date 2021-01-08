@@ -16,13 +16,6 @@ payload = {
 }
 
 
-def get_jose_header_from_token(token) -> dict:
-    # Helper
-    header = token.split(".")[0]
-    deserialized_header = base64.urlsafe_b64decode(header + "===")
-    return json.loads(deserialized_header)
-
-
 @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
 class TestEncryptJWE:
     def test_encrypted_is_valid_jwe_spec(self, curve):
@@ -63,6 +56,12 @@ class TestEncryptJWE:
 
 
 class TestEncryptWithCEK:
+    def _get_jose_header_from_token(self, token) -> dict:
+        # Helper
+        header = token.split(".")[0]
+        deserialized_header = base64.urlsafe_b64decode(header + "===")
+        return json.loads(deserialized_header)
+
     def test_kid_check_in_encrypt_with_cek(self):
         expected_kid = "ThisIsMyHint"
         cek = jwk.JWK.generate(kty="oct")
@@ -88,7 +87,7 @@ class TestEncryptWithCEK:
         jwe_token = encrypt_jwe_with_cek(cek, payload)
 
         # THEN the kid in header does not exist
-        jose_header = get_jose_header_from_token(jwe_token)
+        jose_header = self._get_jose_header_from_token(jwe_token)
         assert "kid" not in jose_header
 
         # AND neither the kid value does not
