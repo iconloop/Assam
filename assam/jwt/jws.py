@@ -9,7 +9,7 @@ _verification_alg = {
 }
 
 
-def encrypt_jws(signer_key: jwk.JWK, payload: dict) -> str:
+def encrypt_jws(signer_key: jwk.JWK, payload: dict, other_headers=None) -> str:
     """Encrypt JWS token.
 
     **JWS format**:
@@ -20,11 +20,12 @@ def encrypt_jws(signer_key: jwk.JWK, payload: dict) -> str:
 
     :param signer_key: Private key of Signer
     :param payload: Contents of being signed
+    :param other_headers: Any headers other than "typ" and "alg" may be specified, they will be included in the header.
     :return: JWE Token
     """
     alg = _verification_alg[signer_key.key_curve]
     return python_jwt.generate_jwt(
-        payload, signer_key, alg
+        payload, signer_key, alg, other_headers=other_headers
     )
 
 
