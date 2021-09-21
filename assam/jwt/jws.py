@@ -5,7 +5,8 @@ from jwcrypto import jwk
 
 _verification_alg = {
     "P-256": "ES256",
-    "secp256k1": "ES256K"
+    "secp256k1": "ES256K",
+    "P-256K": "ES256K"
 }
 
 

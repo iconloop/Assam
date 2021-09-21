@@ -10,7 +10,11 @@ setup_options = {
     "description": "Cryptographic library for Lite Vault servers.",
     "packages": find_packages(),
     "python_requires": ">=3.7.3",
-    "install_requires": ["jwcrypto", "iconsdk", "python-jwt"],
+    "install_requires": [
+        "jwcrypto @ git+https://github.com/iconloop/jwcrypto.git",
+        "iconsdk",
+        "python-jwt"
+    ],
     "extras_require": {
         "tests": req_tests,
         "lint": req_lint,
