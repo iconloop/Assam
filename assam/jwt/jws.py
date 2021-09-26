@@ -1,7 +1,6 @@
-from typing import Tuple
-
 import python_jwt
 from jwcrypto import jwk
+from typing import Tuple, Optional
 
 _verification_alg = {
     "P-256": "ES256",
@@ -30,7 +29,7 @@ def encrypt_jws(signer_key: jwk.JWK, payload: dict, other_headers=None) -> str:
     )
 
 
-def decrypt_jws(token: str, signer_pub_key: jwk.JWK) -> Tuple[dict, dict]:
+def decrypt_jws(token: str, signer_pub_key: Optional[jwk.JWK]) -> Tuple[dict, dict]:
     """Decrypt given JWS token.
 
     Note that payload always bytes.
@@ -41,11 +40,15 @@ def decrypt_jws(token: str, signer_pub_key: jwk.JWK) -> Tuple[dict, dict]:
 
     :raise ValueError  # TODO: Exc type?
     """
+    allowed_algs = ["ES256", "ES256K"]
+    if signer_pub_key is None:
+        allowed_algs.append('none')
+
     try:
         jose_header, payload = python_jwt.verify_jwt(
             token,
             signer_pub_key,
-            allowed_algs=["ES256", "ES256K"],
+            allowed_algs=allowed_algs,
             checks_optional=True
         )
     except Exception as e:  # TODO: Exc type?
