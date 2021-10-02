@@ -7,7 +7,7 @@ payload = {
 }
 
 
-@pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
+@pytest.mark.parametrize("curve", ["P-256", "P-256K", "secp256k1"])
 class TestEncryptJWS:
     def test_encrypt(self, curve):
         key_pair = generate_jwk(curve)
@@ -24,7 +24,7 @@ class TestEncryptJWS:
             assert part
 
 
-@pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
+@pytest.mark.parametrize("curve", ["P-256", "P-256K", "secp256k1"])
 class TestDecryptJWS:
     def test_decrypt(self, curve):
         signer_key_pair = generate_jwk(curve)
