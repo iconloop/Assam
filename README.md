@@ -8,6 +8,9 @@ It heavily depends on [JWCrypto] library to achieve its main purposes:
 
 ## Prerequisite
 - Python 3.7.x
+- jwcrypto (must use a modified version) https://github.com/iconloop/jwcrypto.git
+  - Origin(https://github.com/latchset/jwcrypto) does not work with Assam.
+  (It doesn't suport P-256K and outside epk)
 
 ## Installation
 1. **Install Python interpreter (3.7+)**
