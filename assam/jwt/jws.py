@@ -1,15 +1,15 @@
-from typing import Tuple
-
 import python_jwt
 from jwcrypto import jwk
+from typing import Tuple, Optional
 
 _verification_alg = {
     "P-256": "ES256",
-    "secp256k1": "ES256K"
+    "secp256k1": "ES256K",
+    "P-256K": "ES256K"
 }
 
 
-def encrypt_jws(signer_key: jwk.JWK, payload: dict) -> str:
+def encrypt_jws(signer_key: jwk.JWK, payload: dict, other_headers=None) -> str:
     """Encrypt JWS token.
 
     **JWS format**:
@@ -20,15 +20,16 @@ def encrypt_jws(signer_key: jwk.JWK, payload: dict) -> str:
 
     :param signer_key: Private key of Signer
     :param payload: Contents of being signed
+    :param other_headers: Any headers other than "typ" and "alg" may be specified, they will be included in the header.
     :return: JWE Token
     """
     alg = _verification_alg[signer_key.key_curve]
     return python_jwt.generate_jwt(
-        payload, signer_key, alg
+        payload, signer_key, alg, other_headers=other_headers
     )
 
 
-def decrypt_jws(token: str, signer_pub_key: jwk.JWK) -> Tuple[dict, dict]:
+def decrypt_jws(token: str, signer_pub_key: Optional[jwk.JWK]) -> Tuple[dict, dict]:
     """Decrypt given JWS token.
 
     Note that payload always bytes.
@@ -39,11 +40,15 @@ def decrypt_jws(token: str, signer_pub_key: jwk.JWK) -> Tuple[dict, dict]:
 
     :raise ValueError  # TODO: Exc type?
     """
+    allowed_algs = ["ES256", "ES256K"]
+    if signer_pub_key is None:
+        allowed_algs.append('none')
+
     try:
         jose_header, payload = python_jwt.verify_jwt(
             token,
             signer_pub_key,
-            allowed_algs=["ES256", "ES256K"],
+            allowed_algs=allowed_algs,
             checks_optional=True
         )
     except Exception as e:  # TODO: Exc type?

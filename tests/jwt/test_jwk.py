@@ -4,7 +4,7 @@ from assam.jwt import generate_jwk
 
 
 class TestJWK:
-    @pytest.mark.parametrize("curve", ["P-256", "secp256k1"])
+    @pytest.mark.parametrize("curve", ["P-256", "P-256K", "secp256k1"])
     def test_generate_key(self, curve):
         # WHEN I generate Key Pair
         k = generate_jwk(curve)

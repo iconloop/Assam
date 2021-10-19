@@ -6,7 +6,10 @@ from jwcrypto import jwk, jwe
 from ._helper import extract_cek
 
 
-def encrypt_jwe(pub_key: jwk.JWK, payload: dict, kid: Optional[str] = None) -> Tuple[str, jwk.JWK]:
+def encrypt_jwe(pub_key: jwk.JWK,
+                payload: dict,
+                kid: Optional[str] = None,
+                epk: Optional[jwk.JWK] = None) -> Tuple[str, jwk.JWK]:
     """Encrypt JWE token.
 
     **JWE format**:
@@ -20,10 +23,11 @@ def encrypt_jwe(pub_key: jwk.JWK, payload: dict, kid: Optional[str] = None) -> T
     :param pub_key: Peer's public key.  # FIXME: follows JWK format currently.
     :param payload: Payload to be sent
     :param kid: ECDH key identifier
+    :param epk: Sender's ECDH key
     :return Tuple[str, jwcrypto.jwk.JWK]: serialized JWE token, CEK  # TODO: CEK type could be changed.
     """
     protected_header = {
-        "alg": "ECDH-ES+A128KW",
+        "alg": "ECDH-ES",
         "enc": "A128GCM",
         "typ": "JWE",
     }
@@ -36,7 +40,8 @@ def encrypt_jwe(pub_key: jwk.JWK, payload: dict, kid: Optional[str] = None) -> T
     jwe_obj = jwe.JWE(
         payload,
         recipient=pub_key,
-        protected=protected_header
+        protected=protected_header,
+        epk=epk
     )
     cek = extract_cek(jwe_obj)
 

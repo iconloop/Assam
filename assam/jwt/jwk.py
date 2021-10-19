@@ -2,7 +2,7 @@ from jwcrypto.jwk import JWK
 
 
 possible_curves = [
-    "P-256", "secp256k1"
+    "P-256", "secp256k1", "P-256K"
 ]
 
 
